@@ -16,7 +16,10 @@ export function maybeAsyncResult<T>(
   try {
     const result = isFunction(getResult) ? getResult() : getResult;
     return isPromise(result)
-      ? result.then((result: T) => resultHandler(result))
+      ? result.then(
+          (result: T) => resultHandler(result),
+          (err: Error) => errorHandler(err)
+        )
       : resultHandler(result);
   } catch (err) {
     return errorHandler(err as Error);

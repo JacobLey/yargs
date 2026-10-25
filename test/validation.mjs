@@ -100,6 +100,36 @@ describe('validation tests', () => {
         .parse('--name Itachi');
     });
 
+    it('fails with the error of an async check that rejects', async () => {
+      let ran = false;
+      let error;
+      const r = await checkOutput(async () => {
+        try {
+          await yargs()
+            .exitProcess(false)
+            .command(
+              'go',
+              'go desc',
+              yargs =>
+                yargs.option('n', {type: 'number'}).check(async () => {
+                  await Promise.resolve();
+                  throw new Error('n must be 1');
+                }),
+              () => {
+                ran = true;
+              }
+            )
+            .parseAsync(['go', '--n', '2']);
+          expect.fail();
+        } catch (err) {
+          error = err;
+        }
+      });
+      error.message.should.equal('n must be 1');
+      r.errors[r.errors.length - 1].should.equal('n must be 1');
+      ran.should.equal(false);
+    });
+
     // See: https://github.com/yargs/yargs/issues/1975
     describe('with a parse callback', () => {
       const checkN = argv => {
@@ -203,6 +233,29 @@ describe('validation tests', () => {
             }
           )
           .parse(['--n', '2'], {}, err => {
+            error = err;
+          });
+        error.message.should.equal('n must be 1');
+        ran.should.equal(false);
+      });
+
+      it('does not run the command handler if an async command check rejects', async () => {
+        let ran = false;
+        let error;
+        await yargs()
+          .command(
+            'go',
+            'go desc',
+            yargs =>
+              yargs.option('n', {type: 'number'}).check(async argv => {
+                await Promise.resolve();
+                return checkN(argv);
+              }),
+            () => {
+              ran = true;
+            }
+          )
+          .parseAsync(['go', '--n', '2'], {}, err => {
             error = err;
           });
         error.message.should.equal('n must be 1');
